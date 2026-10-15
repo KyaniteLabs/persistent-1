@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Persistent-1 — an agent whose identity survives model swaps — Kyanite Labs</title>
+<meta name="description" content="Persistent-1 is a persistent-agent substrate from Kyanite Labs: prose-in-git identity and memory that any model can execute, compounding memory, and honestly measured growth. Status, evidence, and roadmap — verified 2026-10-15.">
+<style>
+/* ============ tokens (OKLCH; hex fallbacks measured) ============ */
+:root {
+  /* primitives */
+  --kyanite-h: 248;
+  --bg: oklch(98.2% 0.004 var(--kyanite-h));        /* #f8f9fc */
+  --surface: oklch(100% 0 0);                        /* #ffffff */
+  --surface-2: oklch(96.2% 0.005 var(--kyanite-h));  /* #f0f2f7 */
+  --ink: oklch(25% 0.028 var(--kyanite-h));          /* #222936 */
+  --ink-muted: oklch(44% 0.03 var(--kyanite-h));     /* #43506b (4.5+ on bg) */
+  --line: oklch(88% 0.008 var(--kyanite-h));         /* #d7dbe5 */
+  --accent: oklch(44% 0.13 var(--kyanite-h));        /* #3557c9 text-safe link */
+  --accent-ink: oklch(98% 0.01 var(--kyanite-h));    /* on-accent text */
+  --accent-deep: oklch(34% 0.11 var(--kyanite-h));   /* hover */
+  --ok: oklch(42% 0.11 152);                         /* #217a53 text-safe */
+  --warn: oklch(42% 0.10 65);                        /* #7a5411 text-safe */
+  --hold: oklch(46% 0.12 282);                       /* #6246b0 text-safe */
+  --ok-bg: oklch(95% 0.03 152);
+  --warn-bg: oklch(95.5% 0.03 80);
+  --hold-bg: oklch(95% 0.03 285);
+  --bar-base: oklch(90% 0.01 var(--kyanite-h));
+  /* type */
+  --font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Charter, Georgia, "Times New Roman", serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --step--2: 0.8rem;
+  --step--1: 0.9rem;
+  --step-0: 1.0625rem;
+  --step-1: 1.3rem;
+  --step-2: 1.6rem;
+  --step-3: clamp(1.9rem, 1.1rem + 2.6vw, 2.9rem);
+  --measure: 68ch;
+  --space-1: 0.5rem; --space-2: 1rem; --space-3: 1.5rem; --space-4: 2.5rem; --space-5: 4rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: oklch(18.5% 0.014 var(--kyanite-h));       /* #171b25 */
+    --surface: oklch(22.5% 0.016 var(--kyanite-h));  /* #1f2431 */
+    --surface-2: oklch(26% 0.018 var(--kyanite-h));  /* #272d3c */
+    --ink: oklch(93% 0.008 var(--kyanite-h));        /* #e9ebf2 */
+    --ink-muted: oklch(74% 0.016 var(--kyanite-h));  /* #aeb6ca */
+    --line: oklch(34% 0.02 var(--kyanite-h));        /* #3c4356 */
+    --accent: oklch(76% 0.11 var(--kyanite-h));      /* #9db4f5 */
+    --accent-ink: oklch(20% 0.03 var(--kyanite-h));
+    --accent-deep: oklch(84% 0.09 var(--kyanite-h));
+    --ok: oklch(78% 0.12 152);                       /* #6cc197 */
+    --warn: oklch(80% 0.12 85);                      /* #d3ab53 */
+    --hold: oklch(78% 0.11 282);                     /* #b39ddb */
+    --ok-bg: oklch(28% 0.04 152);
+    --warn-bg: oklch(29% 0.04 80);
+    --hold-bg: oklch(28% 0.04 285);
+    --bar-base: oklch(32% 0.02 var(--kyanite-h));
+  }
+}
+/* ============ base ============ */
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--step-0);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 74rem; margin: 0 auto; padding: 0 1.25rem; }
+main { max-width: var(--measure); margin: 0 auto; padding: 0 1.25rem; }
+h1, h2, h3 { line-height: 1.15; text-wrap: balance; margin: 0 0 var(--space-2); }
+h1, h2 { font-family: var(--font-display); font-weight: 500; }
+h1 { font-size: var(--step-3); letter-spacing: -0.015em; }
+h2 { font-size: var(--step-2); letter-spacing: -0.01em; margin-top: var(--space-5); padding-top: var(--space-3); border-top: 1px solid var(--line); }
+h2:first-of-type { border-top: 0; }
+h3 { font-size: var(--step-1); margin-top: var(--space-3); }
+p { margin: 0 0 var(--space-2); }
+p:last-child { margin-bottom: 0; }
+a { color: var(--accent); text-underline-offset: 0.2em; }
+a:hover { color: var(--accent-deep); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+strong { font-weight: 650; }
+.mono, .klabel { font-family: var(--font-mono); font-size: var(--step--1); }
+.skip {
+  position: absolute; left: -9999px; top: 0; background: var(--surface); color: var(--ink);
+  padding: 0.75rem 1rem; z-index: 10; border: 2px solid var(--accent);
+}
+.skip:focus { left: 0.5rem; top: 0.5rem; }
+/* ============ header ============ */
+header.site {
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+header.site .wrap {
+  display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3);
+  align-items: baseline; justify-content: space-between;
+  padding-top: var(--space-2); padding-bottom: var(--space-2);
+}
+.orgmark { font-weight: 700; letter-spacing: 0.02em; }
+.orgmark a { color: var(--ink); text-decoration: none; }
+.orgmark a:hover { color: var(--accent); }
+.stamp { color: var(--ink-muted); font-family: var(--font-mono); font-size: var(--step--2); }
+/* ============ hero ============ */
+.hero { padding: var(--space-5) 0 var(--space-4); }
+.kicker {
+  font-family: var(--font-mono); font-size: var(--step--1); text-transform: uppercase;
+  letter-spacing: 0.14em; color: var(--ink-muted); margin: 0 0 var(--space-2);
+}
+.lede { font-size: var(--step-1); line-height: 1.5; color: var(--ink); max-width: 34em; }
+.hero .notis {
+  margin-top: var(--space-3); color: var(--ink-muted);
+  border-left: 3px solid var(--accent); padding-left: var(--space-2);
+}
+/* ============ status pills ============ */
+.pills { display: flex; flex-wrap: wrap; gap: var(--space-1); margin: var(--space-3) 0 0; padding: 0; list-style: none; }
+.pill {
+  font-family: var(--font-mono); font-size: var(--step--2);
+  padding: 0.3rem 0.7rem; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--surface); display: inline-flex; gap: 0.45rem; align-items: center;
+}
+.dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; flex: none; }
+.dot.ok { background: var(--ok); }
+.dot.warn { background: var(--warn); }
+.dot.hold { background: var(--hold); }
+.pill .state { color: var(--ink-muted); }
+/* ============ cards / definition grid ============ */
+.grid { display: grid; gap: var(--space-2); grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); margin: var(--space-3) 0; }
+.card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 0.5rem;
+  padding: var(--space-2); margin: 0;
+}
+.card h3 { margin: 0 0 var(--space-1); font-size: var(--step-0); }
+.card p { font-size: var(--step--1); color: var(--ink-muted); margin: 0; }
+.card .klabel { color: var(--ink); font-weight: 600; }
+/* ============ tables ============ */
+.tablewrap { overflow-x: auto; margin: var(--space-2) 0; }
+table { border-collapse: collapse; width: 100%; font-size: var(--step--1); }
+th, td { text-align: left; padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--font-mono); font-size: var(--step--2); text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-muted); font-weight: 600; white-space: nowrap; }
+td.num { font-family: var(--font-mono); white-space: nowrap; }
+caption { text-align: left; caption-side: bottom; color: var(--ink-muted); font-size: var(--step--2); padding-top: var(--space-1); }
+/* ============ timeline ============ */
+.timeline { list-style: none; margin: var(--space-3) 0; padding: 0; }
+.timeline li {
+  border-left: 2px solid var(--line); padding: 0 0 var(--space-3) var(--space-3);
+  position: relative; margin: 0;
+}
+.timeline li::before {
+  content: ""; position: absolute; left: -0.4rem; top: 0.35rem; width: 0.6rem; height: 0.6rem;
+  border-radius: 50%; background: var(--accent); border: 2px solid var(--bg);
+}
+.timeline .date { font-family: var(--font-mono); font-size: var(--step--2); color: var(--ink-muted); display: block; }
+.timeline h3 { margin: 0 0 var(--space-1); font-size: var(--step-0); padding-top: 0; }
+.timeline p { font-size: var(--step--1); color: var(--ink); margin: 0; }
+/* ============ bars ============ */
+.bars { margin: var(--space-3) 0; }
+.barrow { margin-bottom: var(--space-2); }
+.barrow .lbl { display: flex; justify-content: space-between; gap: var(--space-2); font-size: var(--step--1); margin-bottom: 0.3rem; }
+.barrow .lbl .v { font-family: var(--font-mono); white-space: nowrap; }
+.track { height: 0.9rem; background: var(--bar-base); border-radius: 0.2rem; overflow: hidden; }
+.fill { height: 100%; border-radius: 0.2rem 0 0 0.2rem; }
+.fill.pass { background: var(--ok); }
+.fill.fail { background: var(--warn); }
+.fill.nogo { background: var(--hold); }
+.bar-note { font-size: var(--step--2); color: var(--ink-muted); margin-top: var(--space-1); }
+/* ============ ladder ============ */
+.ladder { list-style: none; margin: var(--space-2) 0; padding: 0; }
+.ladder li {
+  display: flex; gap: var(--space-2); align-items: baseline; padding: var(--space-1) 0;
+  border-bottom: 1px dashed var(--line); font-size: var(--step--1);
+}
+.ladder li:last-child { border-bottom: 0; }
+.ladder .rung { font-family: var(--font-mono); font-size: var(--step--2); flex: none; width: 11.5rem; color: var(--ink-muted); }
+.ladder .here { color: var(--accent); font-weight: 600; }
+/* ============ callout ============ */
+.callout {
+  background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  border-radius: 0.5rem; padding: var(--space-2) var(--space-3); margin: var(--space-3) 0;
+}
+.callout p { font-size: var(--step--1); }
+/* ============ footer ============ */
+footer.site {
+  margin-top: var(--space-5); border-top: 1px solid var(--line); background: var(--surface);
+  padding: var(--space-3) 0;
+}
+footer.site p { font-size: var(--step--1); color: var(--ink-muted); margin: 0 0 var(--space-1); }
+footer.site p:last-child { margin: 0; }
+@media (max-width: 640px) {
+  .ladder li { flex-direction: column; gap: 0.15rem; }
+  .ladder .rung { width: auto; }
+  header.site .wrap { flex-direction: column; gap: 0.25rem; }
+  /* tables stack: each row becomes a labelled block — nothing clipped, nothing scrolled off-screen */
+  .tablewrap { overflow-x: visible; }
+  .tablewrap table, .tablewrap tbody, .tablewrap tr, .tablewrap td, .tablewrap th { display: block; width: 100%; }
+  .tablewrap thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .tablewrap tr { border: 1px solid var(--line); border-radius: 0.5rem; padding: var(--space-1) var(--space-2); margin-bottom: var(--space-2); }
+  .tablewrap td { border-bottom: 0; padding: 0.2rem 0; }
+  .tablewrap td::before, .tablewrap td.num::before {
+    content: attr(data-label); display: block; font-family: var(--font-mono); font-size: var(--step--2);
+    text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-muted); margin-bottom: 0.1rem;
+  }
+  .tablewrap caption { display: block; }
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+
+<header class="site">
+  <div class="wrap">
+    <p class="orgmark" style="margin:0"><a href="https://kyanitelabs.tech">Kyanite&nbsp;Labs</a></p>
+    <p class="stamp" style="margin:0">Persistent-1 · content verified 2026-10-15 · canonical repo @ 4cf9843</p>
+  </div>
+</header>
+
+<div class="hero wrap">
+  <p class="kicker">Research program · live since September 2026</p>
+  <h1>An agent whose identity survives model swaps.</h1>
+  <p class="lede">Persistent-1 is not a chatbot, a fine-tune, or a model. It is a <strong>substrate — prose in git</strong> — that any model can execute: an identity pack, a compounding memory, a nightly consolidation daemon, and a growth suite that measures whether the agent actually got better. The agent is the reading tradition, not the reader.</p>
+  <p class="notis">The floor is its body; the repository is its mind. Nothing ships on vibes here: every capability claim carries a measured result, and every result carries a class on the honesty ladder below.</p>
+  <ul class="pills" aria-label="Program status">
+    <li class="pill"><span class="dot ok" aria-hidden="true"></span><span class="state">live:</span> 46 daily attendant beats since Sep 2</li>
+    <li class="pill"><span class="dot hold" aria-hidden="true"></span><span class="state">runtime:</span> HOLD — swap protocol gates release</li>
+    <li class="pill"><span class="dot ok" aria-hidden="true"></span><span class="state">tests:</span> 29/29 green offline (11 + 18)</li>
+    <li class="pill"><span class="dot warn" aria-hidden="true"></span><span class="state">voice brain:</span> quant verdict pending</li>
+  </ul>
+</div>
+
+<main id="main">
+
+  <h2>What it is</h2>
+  <p>Five components, each backed by a measured result rather than a demo:</p>
+  <div class="grid">
+    <div class="card">
+      <h3><span class="klabel">01 · Identity pack</span></h3>
+      <p>A prose document that defines what the agent protects, owes, and never does — independent of which model serves it. It survives tokenizer, model, and hardware changes because it is text, not weights.</p>
+    </div>
+    <div class="card">
+      <h3><span class="klabel">02 · Memory substrate</span></h3>
+      <p>Git-versioned markdown plus SQLite full-text search. Pages are admitted through a verification gate, never deleted — superseded with provenance. 231 memory pages and counting.</p>
+    </div>
+    <div class="card">
+      <h3><span class="klabel">03 · Consolidation daemon</span></h3>
+      <p>Nightly distillation of the day's learnings into causal abstractions, promoted through verification gates. The dream log records every promotion; unverified content never enters memory.</p>
+    </div>
+    <div class="card">
+      <h3><span class="klabel">04 · Growth suite</span></h3>
+      <p>Seeded daily task generators and property-based graders measuring operator-minutes replaced — not tokens generated. Two-channel contamination control keeps the suite honest.</p>
+    </div>
+    <div class="card">
+      <h3><span class="klabel">05 · Swap test</span></h3>
+      <p>The proof of identity persistence: a different model, reading the same substrate, must give the same answers about who it is. A failed swap test is a critical incident.</p>
+    </div>
+  </div>
+
+  <h2>Evidence so far</h2>
+  <p>Lab-measured results from the memory and measurement program (isolated-accepted class — offline benchmarks, not production claims):</p>
+  <div class="tablewrap">
+    <table>
+      <caption>Each row is a measured comparison from the Persistent-1 evidence trail; the benchmark names are the trail keys.</caption>
+      <thead>
+        <tr><th scope="col">Question</th><th scope="col">Measured result</th><th scope="col">Class</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td data-label="Question">Does learned retrieval beat plain keyword search over the same memory?</td>
+          <td data-label="Measured result"><strong>No.</strong> BM25 keyword search scored 41.5% vs 37.1–38.2% for every RAG variant on the neutral benchmark (M2).</td>
+          <td data-label="Class" class="num">isolated-accepted</td>
+        </tr>
+        <tr>
+          <td data-label="Question">Does distillation compound memory, or just store it?</td>
+          <td data-label="Measured result">Distilled memory scored <strong>+23 points</strong> over raw storage on the CLIN continuation benchmark (M1) — and the curve saturates rather than compounding forever. We report both halves.</td>
+          <td data-label="Class" class="num">isolated-accepted</td>
+        </tr>
+        <tr>
+          <td data-label="Question">Can the growth suite be gamed by memorizing its generator?</td>
+          <td data-label="Measured result">The suite kills gaming two ways: a structural allowlist and daily-fresh seeded generators (M4). Contamination is monitored as a repeat-vs-fresh gap with an alarm threshold.</td>
+          <td data-label="Class" class="num">isolated-accepted</td>
+        </tr>
+        <tr>
+          <td data-label="Question">What survives a full model swap?</td>
+          <td data-label="Measured result">Only prose survived tokenizer + model + hardware changes in the Council PA-3 trials. That finding is why the substrate is prose-in-git and why weights are never the only home of anything.</td>
+          <td data-label="Class" class="num">isolated-accepted</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What happened this week</h2>
+  <p>The program's status as of <span class="mono">2026-10-15</span>, in the order it landed:</p>
+  <ol class="timeline">
+    <li>
+      <span class="date">2026-10-15 · consolidation</span>
+      <h3>Four lineages, one canonical repository</h3>
+      <p>The live deployment lineage, the hardened code forge, recovered laptop worktrees, and the research desk merged into a single canonical repo — nothing discarded, full-fidelity snapshots preserved on the side. One mind, one history.</p>
+    </li>
+    <li>
+      <span class="date">2026-10-15 · law</span>
+      <h3>The learning law changed: prose-anchored, multi-channel</h3>
+      <p>Directed by the CEO, ruled by the lab: Persistent-1 may learn through <em>any</em> channel that measurably helps — weights, latent thinking, compressed states, code — but prose stays the portable anchor, every non-prose channel must compile back to a portable form, and every channel must pass its own swap test before it counts. No eval trail, no channel.</p>
+    </li>
+    <li>
+      <span class="date">2026-10-15 · integration</span>
+      <h3>Fast-voice substrate landed on master</h3>
+      <p>A cache-friendly prompt layout for the fast voice model: the identity pack is a byte-identical ~5 KB stable prefix, retrieved memory pages are appended <em>last</em>, and quarantine material is structurally excluded from every retrieval. All 29 offline tests green — re-run by hand the day this page was written.</p>
+    </li>
+    <li>
+      <span class="date">2026-10-15 · measurement</span>
+      <h3>Swap gate pre-registered before any score</h3>
+      <p>The identity-swap gate now has its metric and floors pinned in writing before the first scoring run — down to the exact question set and a similarity floor of max(0.30, 0.90 × reference). Floors registered after a run are void by rule; this is how the scores stay worth believing.</p>
+    </li>
+    <li>
+      <span class="date">2026-10-15 · running now</span>
+      <h3>Quantization ladder: the tiny lab has spoken</h3>
+      <p>To run the voice brain on small hardware, can a 4-bit model match a 6-bit one? At the 350M scale the lab reached a terminal verdict — generic 4-bit <strong>fails</strong> deep composition (23/32), better calibration data does <strong>not</strong> fix it (22/32), but protecting 26 attention and convolution tensors — a 9.9% size cost — <strong>restores full parity</strong> (32/32, zero anomaly counters, 93/96 vs the fp16 reference). The 2.6B voice-brain legs are staged and running now; the verdict consumes those rows, not the tiny lab's prior.</p>
+    </li>
+    <li>
+      <span class="date">2026-10-15 · security</span>
+      <h3>Adversarial review closed, conditions bind</h3>
+      <p>An independent security review of the multi-channel design closed with four binding conditions — quarantine never enters runtime, log re-derivation is offline and treated as untrusted, identity artifacts stay encrypted least-privilege, and compilers act as gates. The latent-state learning channel stays closed until its own gate list clears.</p>
+    </li>
+    <li>
+      <span class="date">standing · operations</span>
+      <h3>Runtime HOLD — deliberately</h3>
+      <p>The deployed brain is untouched while the swap protocol runs: the live lineage is preserved branch-and-bundle, and the daily attendant keeps writing its beat — 46 beats and counting. No service change ships until the swap test and a verified rollback clear. The HOLD is the discipline, not a delay.</p>
+    </li>
+  </ol>
+
+  <h2>The composition result, in one picture</h2>
+  <p>Deep-composition score at the 350M lab scale — the question set that 4-bit quantization kept failing until precision was placed where it matters. Higher is better; 32 is the ceiling.</p>
+  <div class="bars" role="img" aria-label="Bar chart: composed-depth scores out of 32. Generic 4-bit: 23 of 32, fail. In-domain calibrated 4-bit: 22 of 32, fail. Mixed-precision 4-bit with protected attention and convolution tensors: 32 of 32, pass at 9.9 percent larger than generic.">
+    <div class="barrow">
+      <div class="lbl"><span>Generic 4-bit (Q4_K_M)</span> <span class="v">23 / 32</span></div>
+      <div class="track"><div class="fill fail" style="width: 71.9%"></div></div>
+    </div>
+    <div class="barrow">
+      <div class="lbl"><span>4-bit + in-domain calibration</span> <span class="v">22 / 32</span></div>
+      <div class="track"><div class="fill nogo" style="width: 68.8%"></div></div>
+    </div>
+    <div class="barrow">
+      <div class="lbl"><span>4-bit, attention &amp; conv protected</span> <span class="v">32 / 32</span></div>
+      <div class="track"><div class="fill pass" style="width: 100%"></div></div>
+    </div>
+    <p class="bar-note">Same question set, same frozen gate (26/32 to pass, zero anomaly counters). The one change that worked: keep ~10% of tensors at higher precision — exactly the attention-output and short-convolution projections. Values are in the labels; the bars are the summary, not the evidence.</p>
+  </div>
+
+  <h2>How results are allowed to sound</h2>
+  <p>Every claim on this page sits somewhere on a ladder, and the ladder is the point. A result may only be called what it was measured to be:</p>
+  <ul class="ladder">
+    <li><span class="rung">prepared</span><span>Protocol written and pre-registered. No run yet, no claim.</span></li>
+    <li><span class="rung">isolated-accepted</span><span>Run offline or on a benchmark. Real measurement, not yet the live stack.</span></li>
+    <li><span class="rung">production-accepted <span class="here">← everything must earn this</span></span><span>Run on the live stack with a real model swap and a verified rollback path. Nothing in this program is production-accepted yet — including the integration that landed this week.</span></li>
+  </ul>
+  <div class="callout">
+    <p><strong>Why a landing page reads this careful:</strong> Persistent-1's product is accumulated capability, measured in operator-minutes replaced. A marketing claim it can't cash is a contamination event against its own memory. This page is written to the same standard the agent holds itself to.</p>
+  </div>
+
+  <h2>Roadmap</h2>
+  <div class="tablewrap">
+    <table>
+      <caption>Status verified 2026-10-15. Every item names the gate that moves it — that's the roadmap discipline.</caption>
+      <thead>
+        <tr><th scope="col">Next</th><th scope="col">Gate that moves it</th><th scope="col">Status</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td data-label="Next">Voice-brain quantization verdict (2.6B legs)</td>
+          <td data-label="Gate that moves it">Pre-registered ladder: mixed-precision vs calibrated 4-bit vs 6-bit controls on a frozen 300-question gate + holdout</td>
+          <td data-label="Status" class="num">running</td>
+        </tr>
+        <tr>
+          <td data-label="Next">First gated identity-swap score</td>
+          <td data-label="Gate that moves it">The pre-registered swap gate (metric + floors pinned 2026-10-15); no score exists before this</td>
+          <td data-label="Status" class="num">staged</td>
+        </tr>
+        <tr>
+          <td data-label="Next">Voice lane decision</td>
+          <td data-label="Gate that moves it">The quant verdict above — the program does not assume 4-bit ≈ 6-bit until measured</td>
+          <td data-label="Status" class="num">blocked on verdict</td>
+        </tr>
+        <tr>
+          <td data-label="Next">Runtime release</td>
+          <td data-label="Gate that moves it">Swap protocol S1–S4 clear per channel + verified rollback on the authority host</td>
+          <td data-label="Status" class="num">HOLD by design</td>
+        </tr>
+        <tr>
+          <td data-label="Next">Larger voice model staging</td>
+          <td data-label="Gate that moves it">License threshold attestation and a pre-registered evaluation window</td>
+          <td data-label="Status" class="num">gated</td>
+        </tr>
+        <tr>
+          <td data-label="Next">Latent-state learning channel</td>
+          <td data-label="Gate that moves it">Its own gate list (L1–L6) under the security conditions</td>
+          <td data-label="Status" class="num">closed pending gates</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Where the numbers live</h2>
+  <p>The canonical repository is private while the research runs; every number on this page was re-verified against it on <span class="mono">2026-10-15</span> at revision <span class="mono">4cf9843</span> — the same day the last item landed. The evidence trail (benchmark packets, pre-registrations, verdict documents, test receipts) is maintained in-repo and available to collaborators on request. Kyanite Labs builds in the open where it can and measures in private where it must; when a result is ready to be production-accepted, it will be published with its full trail.</p>
+
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <p><strong>Kyanite Labs</strong> — Persistent-1 research program. <a href="https://kyanitelabs.tech">kyanitelabs.tech</a></p>
+    <p>Page content verified against the canonical Persistent-1 repository on 2026-10-15 (revision 4cf9843). Claims carry honesty-ladder classes; the runtime is under a deliberate verification HOLD.</p>
+  </div>
+</footer>
+
+</body>
+</html>
