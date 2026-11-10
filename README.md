@@ -7,7 +7,8 @@ substrate — prose in git — whose identity survives model swaps.
 - **Design:** tastecheck design system (OKLCH tokens, measured contrast in light and
   dark, serif display / sans body / mono labels, 320px-safe, reduced-motion safe)
 - **Content policy:** every claim carries a honesty-ladder class; content is
-  re-verified against the canonical repository at each update. Current page revision:
-  **2026-10-15** (canonical repo @ `4cf9843`).
+  re-verified against the canonical repository at each update. **Last verified:
+  2026-10-15** (canonical repo @ `4cf9843`); the page is a snapshot and has not
+  been re-verified since the research advanced.
 - **Hosting:** GitHub Pages. The research repository itself is private while the
   program runs; collaborators can request the evidence trail.
